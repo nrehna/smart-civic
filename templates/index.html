@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-5 mb-4 bg-white rounded-3 shadow-sm border">
+    <div class="container-fluid py-3">
+        <h1 class="display-5 fw-bold text-dark">AI-Assisted Smart Civic Reporter</h1>
+        <p class="col-md-8 fs-4 text-muted">Empowering citizens and municipal authorities with automated duplicate detection, intelligent clustering, and dynamic priority scoring.</p>
+        <hr class="my-4">
+        <div class="row text-center">
+            <div class="col-md-4 mb-3">
+                <div class="p-3 border bg-light rounded shadow-sm">
+                    <h3><i class="fa-solid fa-clone text-primary"></i></h3>
+                    <h5 class="fw-bold">Smart Duplication</h5>
+                    <p class="text-muted small mb-0">Auto-groups reports within 100 meters into single master issues.</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="p-3 border bg-light rounded shadow-sm">
+                    <h3><i class="fa-solid fa-gauge-high text-danger"></i></h3>
+                    <h5 class="fw-bold">Dynamic Priority</h5>
+                    <p class="text-muted small mb-0">Prioritizes based on frequency, severity, area impact, and waiting time.</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="p-3 border bg-light rounded shadow-sm">
+                    <h3><i class="fa-solid fa-square-check text-success"></i></h3>
+                    <h5 class="fw-bold">Full Transparency</h5>
+                    <p class="text-muted small mb-0">Before-and-after proof wall for public accountability.</p>
+                </div>
+            </div>
+        </div>
+        <div class="mt-4 text-center">
+            <a class="btn btn-primary btn-lg me-2" href="/report" role="button"><i class="fa-solid fa-camera me-2"></i>Report a Civic Issue</a>
+            <a class="btn btn-outline-secondary btn-lg" href="/my-complaints" role="button"><i class="fa-solid fa-chart-pie me-2"></i>My Complaints</a>
+        </div>
+    </div>
+</div>
+
+{% if session.get('is_agent') %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0"><i class="fa-solid fa-fire text-danger me-2"></i>Highest-Priority Open Issues</h4>
+    <span class="text-muted small">{{ complaints|length }} total reports submitted &bull; <a href="/dashboard">Open Authority Dashboard</a></span>
+</div>
+<div class="row">
+    {% for m in master_issues %}
+    <div class="col-md-4 mb-3">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="fw-bold mb-0">{{ m.issue_type }}</h6>
+                    {% if m.priority_level == 'CRITICAL' %}
+                        <span class="badge badge-critical">CRITICAL</span>
+                    {% elif m.priority_level == 'HIGH' %}
+                        <span class="badge badge-high">HIGH</span>
+                    {% elif m.priority_level == 'MEDIUM' %}
+                        <span class="badge badge-medium">MEDIUM</span>
+                    {% else %}
+                        <span class="badge badge-low">LOW</span>
+                    {% endif %}
+                </div>
+                <p class="text-muted small mb-1"><i class="fa-solid fa-location-dot me-1"></i>{{ m.area }}</p>
+                <p class="text-muted small mb-0">{{ m.complaint_count }} report(s) &bull; Status: {{ m.status }}</p>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center py-4 text-muted">No issues reported yet.</div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0"><i class="fa-solid fa-chart-pie text-primary me-2"></i>Issue Status at a Glance</h4>
+    <span class="text-muted small">{{ complaints|length }} total reports submitted</span>
+</div>
+<div class="row text-center">
+    <div class="col-md-4 mb-3"><div class="p-3 rounded shadow-sm" style="background:#fee2e2;"><div class="fs-2 fw-bold">{{ summary['Unsolved'] }}</div><div class="text-muted">Unsolved</div></div></div>
+    <div class="col-md-4 mb-3"><div class="p-3 rounded shadow-sm" style="background:#fef3c7;"><div class="fs-2 fw-bold">{{ summary['In Progress'] }}</div><div class="text-muted">In Progress</div></div></div>
+    <div class="col-md-4 mb-3"><div class="p-3 rounded shadow-sm" style="background:#dcfce7;"><div class="fs-2 fw-bold">{{ summary['Solved'] }}</div><div class="text-muted">Solved</div></div></div>
+</div>
+<p class="text-muted small text-center">Want to check on your own report? Open <a href="/my-complaints">My Complaints</a> to see its status.</p>
+{% endif %}
+{% endblock %}

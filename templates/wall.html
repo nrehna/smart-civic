@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="text-center mb-5">
+    <h2><i class="fa-solid fa-shield-heart text-success me-2"></i>Public Transparency Wall</h2>
+    <p class="text-muted">Witness community impact with verified Before & After resolutions.</p>
+</div>
+
+<div class="row">
+    {% for m in resolved_issues %}
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-success text-white fw-bold">
+                Resolved Issue #MI00{{ m.master_issue_id }}
+            </div>
+            <div class="card-body">
+                <h5 class="card-title text-dark">{{ m.issue_type }}</h5>
+                <p class="text-muted small"><i class="fa-solid fa-location-dot me-1"></i>{{ m.area }}</p>
+                <p class="badge bg-info text-dark mb-3">{{ m.complaint_count }} citizens supported this</p>
+
+                <div class="row g-2 mb-2">
+                    {% set before_image = complaints|selectattr('master_issue_id', 'equalto', m.master_issue_id)|selectattr('image_path')|map(attribute='image_path')|first %}
+                    {% if before_image %}
+                    <div class="col-6">
+                        <span class="badge bg-secondary mb-1">BEFORE</span>
+                        <img src="{{ url_for('static', filename=before_image) }}" class="img-fluid rounded border" alt="Before Image">
+                    </div>
+                    {% endif %}
+                    {% if m.resolution_image %}
+                    <div class="col-6">
+                        <span class="badge bg-success mb-1">AFTER</span>
+                        <img src="{{ url_for('static', filename=m.resolution_image) }}" class="img-fluid rounded border" alt="Resolved Image">
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-footer bg-light text-muted small">
+                Status: <span class="fw-bold text-success">RESOLVED & CLOSED</span>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center py-5">
+        <h4 class="text-muted">No resolved issues on the wall yet. Check back soon!</h4>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

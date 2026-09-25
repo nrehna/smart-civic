@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fa-solid fa-gauge text-dark me-2"></i>Authority Master Issue Dashboard</h2>
+    <span class="badge bg-secondary fs-6">Grouped Master Issues</span>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Issue Type</th>
+                        <th>Area / Location</th>
+                        <th>Complaints</th>
+                        <th>Priority Score</th>
+                        <th>Level</th>
+                        <th>Status</th>
+                        <th style="min-width:330px">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in master_issues %}
+                    <tr>
+                        <td class="fw-bold">MI00{{ m.master_issue_id }}</td>
+                        <td>{{ m.issue_type }}</td>
+                        <td>{{ m.area }}<br><small class="text-muted">({{ m.latitude }}, {{ m.longitude }})</small></td>
+                        <td><span class="badge bg-info text-dark fs-6">{{ m.complaint_count }} reports</span></td>
+                        <td class="fw-bold">{{ m.priority_score }}</td>
+                        <td>
+                            {% if m.priority_level == 'CRITICAL' %}
+                                <span class="badge badge-critical">CRITICAL</span>
+                            {% elif m.priority_level == 'HIGH' %}
+                                <span class="badge badge-high">HIGH</span>
+                            {% elif m.priority_level == 'MEDIUM' %}
+                                <span class="badge badge-medium">MEDIUM</span>
+                            {% else %}
+                                <span class="badge badge-low">LOW</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-secondary">{{ m.status }}</span></td>
+                        <td>
+                            {% set before_image = complaints|selectattr('master_issue_id', 'equalto', m.master_issue_id)|selectattr('image_path')|map(attribute='image_path')|first %}
+                            <button class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="modal" data-bs-target="#complaintsModal{{ m.master_issue_id }}">
+                                <i class="fa-solid fa-file-lines me-1"></i> View Complaints
+                            </button>
+                            <button class="btn btn-sm btn-outline-dark me-1" data-bs-toggle="modal" data-bs-target="#photosModal{{ m.master_issue_id }}">
+                                <i class="fa-solid fa-images me-1"></i> View Photos
+                            </button>
+                            <button class="btn btn-sm btn-dark" data-bs-toggle="modal" data-bs-target="#updateModal{{ m.master_issue_id }}">
+                                <i class="fa-solid fa-pen-to-square me-1"></i> Update
+                            </button>
+                        </td>
+                    </tr>
+
+                    <!-- Modal listing every citizen complaint grouped under this master issue -->
+                    <div class="modal fade" id="complaintsModal{{ m.master_issue_id }}" tabindex="-1">
+                        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                            <div class="modal-content">
+                                <div class="modal-header bg-dark text-white">
+                                    <h5 class="modal-title">Complaints in MI00{{ m.master_issue_id }} &mdash; {{ m.issue_type }}</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    {% for c in complaints if c.master_issue_id == m.master_issue_id %}
+                                    <div class="border rounded p-3 mb-2">
+                                        <div class="d-flex justify-content-between">
+                                            <span class="fw-bold">Complaint #{{ c.complaint_id }}</span>
+                                            <span class="text-muted small">{{ (c.submitted_at or '')[:16]|replace('T', ' ') }}</span>
+                                        </div>
+                                        <p class="mb-1 mt-2">{{ c.description or '(no description)' }}</p>
+                                        <p class="text-muted small mb-0"><i class="fa-solid fa-location-dot me-1"></i>{{ c.area }} &bull; Status: {{ c.status|replace('_', ' ') }}</p>
+                                    </div>
+                                    {% else %}
+                                    <p class="text-muted mb-0">No complaint records found.</p>
+                                    {% endfor %}
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal for Viewing Before / After Photos -->
+                    <div class="modal fade" id="photosModal{{ m.master_issue_id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header bg-dark text-white">
+                                    <h5 class="modal-title">Photos for MI00{{ m.master_issue_id }}</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <span class="badge bg-secondary mb-1">BEFORE</span>
+                                            {% if before_image %}
+                                            <img src="{{ url_for('static', filename=before_image) }}" class="img-fluid rounded border" alt="Before Image">
+                                            {% else %}
+                                            <div class="text-muted small border rounded p-3 text-center">No photo submitted with this report.</div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-6">
+                                            <span class="badge bg-success mb-1">AFTER</span>
+                                            {% if m.resolution_image %}
+                                            <img src="{{ url_for('static', filename=m.resolution_image) }}" class="img-fluid rounded border" alt="Resolved Image">
+                                            {% else %}
+                                            <div class="text-muted small border rounded p-3 text-center">Not resolved yet &mdash; no after photo uploaded.</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal for Status Update -->
+                    <div class="modal fade" id="updateModal{{ m.master_issue_id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form method="POST" enctype="multipart/form-data">
+                                    <div class="modal-header bg-dark text-white">
+                                        <h5 class="modal-title">Update Issue MI00{{ m.master_issue_id }}</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <input type="hidden" name="master_issue_id" value="{{ m.master_issue_id }}">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Change Status Workflow</label>
+                                            <select class="form-select" name="status" required>
+                                                <option value="REPORTED" {% if m.status == 'REPORTED' %}selected{% endif %}>REPORTED</option>
+                                                <option value="VERIFIED" {% if m.status == 'VERIFIED' %}selected{% endif %}>VERIFIED</option>
+                                                <option value="ASSIGNED" {% if m.status == 'ASSIGNED' %}selected{% endif %}>ASSIGNED</option>
+                                                <option value="IN_PROGRESS" {% if m.status == 'IN_PROGRESS' %}selected{% endif %}>IN PROGRESS</option>
+                                                <option value="RESOLVED" {% if m.status == 'RESOLVED' %}selected{% endif %}>RESOLVED</option>
+                                                <option value="CLOSED" {% if m.status == 'CLOSED' %}selected{% endif %}>CLOSED</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Resolution Proof Photo (Required if Resolved)</label>
+                                            <input type="file" class="form-control" name="resolution_image" accept="image/*">
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">No master issues reported yet. Be the first to report an issue!</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
