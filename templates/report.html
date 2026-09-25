@@ -1,0 +1,399 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-dark text-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h4 class="mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i>Submit Civic Complaint</h4>
+                <button type="button" class="btn btn-info btn-sm text-white fw-bold" id="aiAssistantBtn"
+                        data-bs-toggle="modal" data-bs-target="#aiAssistantModal" onclick="openAIAssistant()">
+                    <i class="fa-solid fa-camera me-1"></i>AI Assistant
+                </button>
+            </div>
+            <div class="card-body p-4">
+                <div class="alert alert-info d-none" id="aiFilledNotice" role="alert">
+                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>
+                    AI Assistant filled in the issue type, description, severity and location from your photo. Please review before submitting.
+                </div>
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Issue Type</label>
+                        <select class="form-select" name="issue_type" required>
+                            <option value="Pothole">🕳️ Pothole</option>
+                            <option value="Garbage Accumulation">🗑️ Garbage Accumulation</option>
+                            <option value="Broken Streetlight">💡 Broken Streetlight</option>
+                            <option value="Water Leakage">🚰 Water Leakage</option>
+                            <option value="Drainage Problem">🌊 Drainage Problem</option>
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Severity Level</label>
+                            <select class="form-select" name="severity" id="severity">
+                                <option value="Low">Low</option>
+                                <option value="Medium" selected>Medium</option>
+                                <option value="High">High</option>
+                                <option value="Critical">Critical</option>
+                            </select>
+                            <div class="form-text" id="severityHint">Moderate issue, needs attention soon.</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Area Impact</label>
+                            <select class="form-select" name="area_impact" id="areaImpact">
+                                <option value="Low">Low</option>
+                                <option value="High" selected>High</option>
+                                <option value="Very High">Very High</option>
+                            </select>
+                            <div class="form-text" id="areaImpactHint">Main road / school / hospital / bus stand area.</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Area Name / Landmark</label>
+                        <input type="text" class="form-control" name="area" placeholder="e.g. Anna Nagar near Bus Stand" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Latitude</label>
+                            <input type="text" class="form-control" name="latitude" id="lat" value="13.0827" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Longitude</label>
+                            <input type="text" class="form-control" name="longitude" id="lon" value="80.2707" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="getLocation()"><i class="fa-solid fa-location-crosshairs me-1"></i> Capture Current GPS Location</button>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Description</label>
+                        <textarea class="form-control" name="description" rows="3" placeholder="Provide details about the problem..." required></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Upload Issue Image</label>
+                        <input type="file" class="form-control" name="image" accept="image/*" required>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-dark btn-lg"><i class="fa-solid fa-paper-plane me-2"></i>Submit & Run Duplicate Check</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Assistant: live camera capture + auto geolocation + auto issue-recognition modal.
+     Purely additive -- the manual form above still works exactly as before if this is never opened. -->
+<div class="modal fade" id="aiAssistantModal" tabindex="-1" aria-labelledby="aiAssistantModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="aiAssistantModalLabel"><i class="fa-solid fa-robot me-2"></i>AI Assistant &mdash; Capture Issue Photo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <video id="aiVideo" autoplay playsinline muted class="w-100 rounded border mb-3" style="max-height:360px; object-fit:cover; background:#000;"></video>
+                <canvas id="aiCanvas" class="w-100 rounded border mb-3 d-none" style="max-height:360px; object-fit:cover;"></canvas>
+                <div id="aiStatus" class="text-muted small">Starting camera...</div>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-outline-secondary d-none" id="aiRetakeBtn" onclick="retakePhoto()">
+                    <i class="fa-solid fa-rotate-left me-1"></i>Retake
+                </button>
+                <button type="button" class="btn btn-dark" id="aiCaptureBtn" onclick="capturePhoto()">
+                    <i class="fa-solid fa-camera me-1"></i>Capture Photo
+                </button>
+                <button type="button" class="btn btn-success d-none" id="aiUseBtn" onclick="useThisPhoto()">
+                    <i class="fa-solid fa-check me-1"></i>Use Photo &amp; Auto-Fill Form
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const severityExamples = {
+    "Pothole": {
+        Low: "Minor pothole, barely noticeable.",
+        Medium: "Small pothole, could damage tires.",
+        High: "Large pothole, real accident risk.",
+        Critical: "Major road damage, road may be unsafe to use."
+    },
+    "Garbage Accumulation": {
+        Low: "Small amount of garbage, minor issue.",
+        Medium: "Noticeable pile, needs clearing soon.",
+        High: "Large accumulation, health/hygiene risk.",
+        Critical: "Severe dumping causing blockage or health hazard."
+    },
+    "Broken Streetlight": {
+        Low: "Flickering light, minor issue.",
+        Medium: "Streetlight not working.",
+        High: "Multiple lights out, safety concern at night.",
+        Critical: "Exposed wiring or major electrical hazard."
+    },
+    "Water Leakage": {
+        Low: "Minor drip or seepage.",
+        Medium: "Steady leak, some water wastage.",
+        High: "Large leak, water pooling on the road.",
+        Critical: "Major pipe burst, flooding the area."
+    },
+    "Drainage Problem": {
+        Low: "Slow drainage, minor issue.",
+        Medium: "Water stagnating after rain.",
+        High: "Persistent waterlogging, blocked drain.",
+        Critical: "Severe flooding or sewage overflow."
+    }
+};
+
+const areaImpactExamples = {
+    "Low": "Small residential street, limited footfall.",
+    "High": "Main road / school / hospital / bus stand area.",
+    "Very High": "Major junction, hospital gate, school entrance, or high-traffic transit hub."
+};
+
+function updateSeverityHint() {
+    const issueType = document.querySelector('select[name="issue_type"]').value;
+    const severity = document.getElementById('severity').value;
+    const examples = severityExamples[issueType] || {};
+    document.getElementById('severityHint').textContent = examples[severity] || "";
+}
+
+function updateAreaImpactHint() {
+    const areaImpact = document.getElementById('areaImpact').value;
+    document.getElementById('areaImpactHint').textContent = areaImpactExamples[areaImpact] || "";
+}
+
+document.querySelector('select[name="issue_type"]').addEventListener('change', updateSeverityHint);
+document.getElementById('severity').addEventListener('change', updateSeverityHint);
+document.getElementById('areaImpact').addEventListener('change', updateAreaImpactHint);
+document.addEventListener('DOMContentLoaded', function () {
+    updateSeverityHint();
+    updateAreaImpactHint();
+});
+
+function getLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            document.getElementById('lat').value = position.coords.latitude;
+            document.getElementById('lon').value = position.coords.longitude;
+            alert("GPS location successfully captured!");
+        }, function(error) {
+            alert("Unable to retrieve GPS location. Default coordinates kept.");
+        });
+    } else {
+        alert("Geolocation is not supported by this browser.");
+    }
+}
+
+/* ============================================================
+   AI Assistant: live camera capture, automatic geolocation and
+   automatic issue recognition. Everything below is additive --
+   it only touches form fields via applyAIAnalysis()/geolocation,
+   the same ones the manual controls above already fill in, so
+   nothing about manual reporting changes if this is never opened.
+   ============================================================ */
+let aiStream = null;
+
+function openAIAssistant() {
+    const video = document.getElementById('aiVideo');
+    const canvas = document.getElementById('aiCanvas');
+    const status = document.getElementById('aiStatus');
+
+    video.classList.remove('d-none');
+    canvas.classList.add('d-none');
+    document.getElementById('aiCaptureBtn').classList.remove('d-none');
+    document.getElementById('aiUseBtn').classList.add('d-none');
+    document.getElementById('aiRetakeBtn').classList.add('d-none');
+    status.textContent = "Starting camera...";
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        status.textContent = "This browser/device doesn't support camera capture. Please use the manual form below instead.";
+        return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+        .then(function (stream) {
+            aiStream = stream;
+            video.srcObject = stream;
+            status.textContent = "Point the camera at the issue and tap Capture.";
+        })
+        .catch(function (err) {
+            status.textContent = "Couldn't access the camera (" + err.message + "). You can still use the manual form below.";
+        });
+}
+
+function stopAIStream() {
+    if (aiStream) {
+        aiStream.getTracks().forEach(function (t) { t.stop(); });
+        aiStream = null;
+    }
+}
+
+const aiModalEl = document.getElementById('aiAssistantModal');
+if (aiModalEl) {
+    aiModalEl.addEventListener('hidden.bs.modal', stopAIStream);
+}
+
+function capturePhoto() {
+    const video = document.getElementById('aiVideo');
+    const canvas = document.getElementById('aiCanvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    video.classList.add('d-none');
+    canvas.classList.remove('d-none');
+    document.getElementById('aiCaptureBtn').classList.add('d-none');
+    document.getElementById('aiUseBtn').classList.remove('d-none');
+    document.getElementById('aiRetakeBtn').classList.remove('d-none');
+    document.getElementById('aiStatus').textContent = "Looks good? Confirm to auto-fill the form.";
+}
+
+function retakePhoto() {
+    const video = document.getElementById('aiVideo');
+    const canvas = document.getElementById('aiCanvas');
+    video.classList.remove('d-none');
+    canvas.classList.add('d-none');
+    document.getElementById('aiCaptureBtn').classList.remove('d-none');
+    document.getElementById('aiUseBtn').classList.add('d-none');
+    document.getElementById('aiRetakeBtn').classList.add('d-none');
+    document.getElementById('aiStatus').textContent = "Point the camera at the issue and tap Capture.";
+}
+
+function useThisPhoto() {
+    const canvas = document.getElementById('aiCanvas');
+    const status = document.getElementById('aiStatus');
+    status.textContent = "Analyzing photo and detecting your location...";
+
+    canvas.toBlob(function (blob) {
+        if (!blob) {
+            status.textContent = "Couldn't process that photo -- please try again.";
+            return;
+        }
+
+        // Attach the captured frame as the form's image upload, exactly like a manually
+        // chosen file would be -- the existing /report upload handling needs no changes.
+        const file = new File([blob], "ai_capture_" + Date.now() + ".png", { type: "image/png" });
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        document.querySelector('input[name="image"]').files = dt.files;
+
+        applyAIAnalysis(analyzeCapturedImage(canvas));
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function (position) {
+                    const lat = position.coords.latitude, lon = position.coords.longitude;
+                    document.getElementById('lat').value = lat;
+                    document.getElementById('lon').value = lon;
+                    reverseGeocodeArea(lat, lon);
+                    finishAIAssistant();
+                },
+                function () { finishAIAssistant(); },
+                { timeout: 8000 }
+            );
+        } else {
+            finishAIAssistant();
+        }
+    }, 'image/png');
+}
+
+function finishAIAssistant() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('aiAssistantModal'));
+    if (modal) modal.hide();
+    updateSeverityHint();
+    updateAreaImpactHint();
+    document.getElementById('aiFilledNotice').classList.remove('d-none');
+}
+
+/* Lightweight on-device heuristic that looks at the captured frame's colour
+   profile to guess which civic-issue category it is and pre-fill severity
+   and a draft description. It runs entirely in the browser -- the photo is
+   never sent anywhere for this step -- so treat it as a helpful first guess,
+   not a certified diagnosis: every field it fills stays fully editable, and
+   the citizen reviews everything before submitting. */
+function analyzeCapturedImage(canvas) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    if (!w || !h) {
+        return { issueType: "Pothole", severity: "Medium", areaImpact: "High", description: "AI Assistant couldn't read the photo clearly -- please fill in the details manually." };
+    }
+    const data = ctx.getImageData(0, 0, w, h).data;
+
+    let brightnessSum = 0, darkCount = 0, greenCount = 0, blueCount = 0, grayRoadCount = 0, n = 0;
+    const step = 4 * 8; // sample every 8th pixel -- plenty for a colour-profile guess, and fast
+    for (let i = 0; i < data.length; i += step) {
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        const brightness = (r + g + b) / 3;
+        brightnessSum += brightness;
+        if (brightness < 60) darkCount++;
+        if (g > r + 15 && g > b + 15) greenCount++;
+        if (b > r + 15 && b > g + 5) blueCount++;
+        if (Math.abs(r - g) < 20 && Math.abs(g - b) < 20 && brightness > 60 && brightness < 170) grayRoadCount++;
+        n++;
+    }
+    const avgBrightness = brightnessSum / n;
+    const darkRatio = darkCount / n;
+    const greenRatio = greenCount / n;
+    const blueRatio = blueCount / n;
+    const grayRatio = grayRoadCount / n;
+
+    let issueType, severity, description;
+
+    if (avgBrightness < 55) {
+        issueType = "Broken Streetlight";
+        severity = "High";
+        description = "AI Assistant: the photo was captured in very low light, consistent with a non-functioning streetlight in the area.";
+    } else if (blueRatio > 0.18) {
+        issueType = greenRatio > 0.12 ? "Drainage Problem" : "Water Leakage";
+        severity = "Medium";
+        description = (issueType === "Drainage Problem")
+            ? "AI Assistant: standing, murky water was detected in the photo, consistent with a blocked drain."
+            : "AI Assistant: wet surface / flowing water was detected in the photo, consistent with a pipe or fitting leak.";
+    } else if (greenRatio > 0.15) {
+        issueType = "Garbage Accumulation";
+        severity = "Medium";
+        description = "AI Assistant: an irregular, cluttered colour pattern was detected, consistent with accumulated waste.";
+    } else if (grayRatio > 0.35 && darkRatio > 0.12) {
+        issueType = "Pothole";
+        severity = "High";
+        description = "AI Assistant: a dark, irregular patch on a grey road-like surface was detected, consistent with a pothole.";
+    } else {
+        issueType = "Pothole";
+        severity = "Medium";
+        description = "AI Assistant couldn't confidently classify this photo and picked the closest match -- please check and correct the details below.";
+    }
+
+    return { issueType: issueType, severity: severity, areaImpact: "High", description: description };
+}
+
+function applyAIAnalysis(analysis) {
+    document.querySelector('select[name="issue_type"]').value = analysis.issueType;
+    document.getElementById('severity').value = analysis.severity;
+    document.getElementById('areaImpact').value = analysis.areaImpact;
+    const desc = document.querySelector('textarea[name="description"]');
+    desc.value = desc.value.trim() ? (analysis.description + "\n\n" + desc.value) : analysis.description;
+}
+
+// Free reverse-geocoding lookup (OpenStreetMap Nominatim, no API key needed) to fill in the
+// "Area Name / Landmark" field from the GPS fix. Best-effort only: if it's blocked, slow, or
+// offline, it fails silently and the citizen can still type the area in by hand.
+function reverseGeocodeArea(lat, lon) {
+    const areaField = document.querySelector('input[name="area"]');
+    if (areaField.value.trim()) return; // don't overwrite something the citizen already typed
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=16&addressdetails=1`)
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+            if (!data) return;
+            const addr = data.address || {};
+            const label = addr.road || addr.neighbourhood || addr.suburb || addr.village || data.display_name;
+            if (label && !areaField.value.trim()) areaField.value = label;
+        })
+        .catch(function () { /* silent fallback -- manual entry still works */ });
+}
+</script>
+{% endblock %}

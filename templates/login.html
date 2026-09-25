@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0 mt-4">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <i class="fa-solid fa-lock fa-2x text-dark mb-2"></i>
+                    <h4 class="fw-bold mb-0">Agent Login</h4>
+                    <p class="text-muted small">Authorized personnel only &mdash; access to the Authority Dashboard requires login.</p>
+                </div>
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Username</label>
+                        <input type="text" class="form-control" name="username" required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Password</label>
+                        <input type="password" class="form-control" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-dark w-100"><i class="fa-solid fa-right-to-bracket me-2"></i>Login</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
